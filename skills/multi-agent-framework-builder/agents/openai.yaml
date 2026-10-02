@@ -1,0 +1,4 @@
+interface:
+  display_name: "多 Agent 框架生成器"
+  short_description: "按项目需求生成角色、协作协议、任务状态、质量门禁与长时恢复的开发框架"
+  default_prompt: "使用 $multi-agent-framework-builder，根据我的需求生成项目专属多 Agent 协作框架，包含主入口、角色提示词、任务依赖、写入边界、验收和恢复流程。"

@@ -38,6 +38,26 @@
           "样板制作时浏览器限制本地 HTML，Agent 视觉检查未完成；用户已查看并认可质量"
         ]
       }
+    },
+    {
+      "name": "multi-agent-framework-builder",
+      "path": "skills/multi-agent-framework-builder",
+      "summary": "根据需求生成项目专属多 Agent 协作工作包与可靠的验收、恢复协议",
+      "version": "1.0.0",
+      "status": "active",
+      "verification": {
+        "date": "2026-10-02",
+        "checks": [
+          "参考材料已去除幻灯片专属角色、固定并发、猜测句柄和强制通过规则",
+          "Skill 结构、引用和 Python 语法校验",
+          "文件协议测试覆盖正常状态、验收证据、依赖环、并发写入冲突、旧报告与假通过"
+        ],
+        "limitations": [
+          "测试为合成文件协议，不代表已调用真实多 Agent 平台",
+          "角色权限提示词不是强制沙箱；目标平台适配需在实际项目核验",
+          "尚未根据其它用户项目完成独立框架生成与业务执行试作"
+        ]
+      }
     }
   ]
 }
