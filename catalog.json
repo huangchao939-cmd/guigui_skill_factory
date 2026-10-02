@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "skills": [
+    {
+      "name": "course-lecture-notes",
+      "path": "skills/course-lecture-notes",
+      "summary": "详细中文课程讲义七件套、官方资料融合、批量续作与验收",
+      "version": "1.0.0",
+      "status": "active",
+      "verification": {
+        "date": "2026-10-02",
+        "checks": [
+          "Skill Creator frontmatter 与命名验证通过",
+          "课程结构检查脚本通过正常输入、路径越界、来源缺口与重复课节行为检查"
+        ],
+        "limitations": [
+          "本 skill 依据 Governing AI Agents 讲义实践沉淀；未用新课程进行独立全流程试作",
+          "结构检查不证明教学内容正确性或实验运行成功"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "中文课程讲义制作"
+  short_description: "将课程字幕、PPT 和官方代码转为详细中文讲义，支持七件套与批量验收"
+  default_prompt: "使用 $course-lecture-notes 按七件套标准批量制作指定课程的中文讲义，融合官方代码与资源，并记录来源和验收状态。"
