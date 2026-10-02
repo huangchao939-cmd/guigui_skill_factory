@@ -18,6 +18,26 @@
           "结构检查不证明教学内容正确性或实验运行成功"
         ]
       }
+    },
+    {
+      "name": "course-teaching-notebooks",
+      "path": "skills/course-teaching-notebooks",
+      "summary": "讲义到可运行教学 Notebook、可观察实验、练习答案与结果验收",
+      "version": "1.0.0",
+      "status": "active",
+      "verification": {
+        "date": "2026-10-02",
+        "checks": [
+          "L05 教学样板 14 个代码单元格顺序执行，19 项断言通过",
+          "制作 Agent 核对保存输出，用户认可样板质量",
+          "Skill 格式、引用与 Notebook 检查脚本验证通过"
+        ],
+        "limitations": [
+          "本技能依据认可样板沉淀，未进行其它课程独立全流程验证",
+          "样板真实 Databricks 实验未执行",
+          "样板制作时浏览器限制本地 HTML，Agent 视觉检查未完成；用户已查看并认可质量"
+        ]
+      }
     }
   ]
 }

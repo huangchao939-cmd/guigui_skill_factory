@@ -7,6 +7,7 @@ GUiGUI 的个人 skill 沉淀仓库。把实际任务中验证过的流程、判
 | Skill | 用途 | 状态 |
 |---|---|---|
 | [course-lecture-notes](skills/course-lecture-notes/SKILL.md) | 将字幕、视频、PPT 与官方代码转为详细中文课程讲义，支持七件套、批量制作和验收 | active · v1.0.0 |
+| [course-teaching-notebooks](skills/course-teaching-notebooks/SKILL.md) | 将已有讲义转为可运行教学 Notebook，提供结果观察、参数实验、练习答案及 HTML 阅读版 | active · v1.0.0 |
 
 完整元数据见 [catalog.json](catalog.json)。新增和修改 skill 先阅读 [沉淀规范](docs/SKILL_STANDARD.md)；Agent 还必须遵循 [AGENTS.md](AGENTS.md)。
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "课程教学 Notebook"
+  short_description: "把讲义转为可运行教学实验，展示中间结果、参数变化、练习答案和验证输出"
+  default_prompt: "使用 $course-teaching-notebooks，根据指定讲义制作中文教学 Notebook，按预测、运行、观察、修改、验证编排，交付已执行 ipynb 与 HTML 阅读版。"
