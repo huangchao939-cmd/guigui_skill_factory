@@ -34,6 +34,6 @@ python -m pip install -r requirements-dev.txt
 python scripts/validate_skills.py
 ```
 
-提交前运行检查，并记录实际测试。GitHub Actions 自动执行同一结构检查；它不替代真实任务验收。
+提交前运行检查，并记录实际测试。当前使用本地结构检查；GitHub Actions 配置已在本地准备，待 GitHub 授权具备 `workflow` 权限后上传启用。结构检查不替代真实任务验收。
 
 仓库保存技能定义和少量必要资源。课程视频、批量讲义、临时截图、缓存、账号资料和密钥不进入本仓库。
