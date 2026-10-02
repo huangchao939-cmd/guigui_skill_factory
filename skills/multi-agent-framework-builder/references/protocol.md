@@ -1,104 +1,75 @@
-# 协作契约、质量门禁与恢复
+# Orchestration v2 协议
 
-## 任务状态
+## 定义、运行和根目录
 
-`pending → ready → running → reviewing → passed`。
-未通过审查：`reviewing → changes_requested → ready`，每次重新执行增加 attempt。
-还允许 `failed`（确实失败）、`blocked`（有具体依赖/权限/环境阻碍）、`paused`（预算或用户暂停）、`cancelled`。
-原因为重试耗尽时保持失败/等待，不强制通过。允许在范围内继续独立任务；有失败任务不能宣称整体完成。
-如果用户明确接受缺陷，记录豁免与接受者和理由；不得把 waived 写成测试 passed。
-
-## framework.json
-
-这是本技能的文件协议，不代表运行时调度服务。按项目实际填写，可增加兼容字段：
+workflow.json 保存定义，run.json 是已核对当前状态，events.jsonl 保存实际转换及完整状态快照。run 绑定 workflow_revision 与 definition_digest；辅助工具拒绝原地修改定义，需新 run/显式迁移。定义变化要修订和影响分析，不悄悄将新定义套在旧 run。revision 使用字母、数字、点、连字符、下划线。
+scope/input_refs 相对于项目根；角色相对于工作包；运行 report/evidence 相对于 runs/<run-id>/。路径使用 /，拒绝绝对路径、..、glob；辅助工具保守忽略大小写。声明不等于权限隔离。
 
 ```json
 {
-  "schema_version": 1,
-  "project": "项目名称",
+  "schema_version": 2,
+  "workflow_revision": "revision-1",
+  "project": "示例",
   "mode": "development_harness",
+  "coordination": "orchestration",
   "runtime": {"platform": "generic", "status": "unverified"},
   "policy": {
-    "max_parallel_workers": 1,
-    "max_attempts_per_task": 3,
-    "budget": {"status": "unset", "wall_time_minutes": null, "cost_limit": null},
-    "state_owner": "orchestrator"
+    "state_owner": "orchestrator",
+    "max_parallel_workers": 2,
+    "max_dispatches_per_task": 6,
+    "max_execution_retries": 2,
+    "max_quality_repairs": 2,
+    "budget": {"status": "unset", "wall_time_seconds": null, "cost_limit": null}
   },
   "roles": [
-    {"id": "orchestrator", "prompt": "agents/orchestrator.md"},
-    {"id": "worker", "prompt": "agents/worker.md"},
-    {"id": "reviewer", "prompt": "agents/reviewer.md"}
+    {"id": "orchestrator", "kind": "orchestrator", "prompt": "agents/orchestrator.md"},
+    {"id": "worker", "kind": "worker", "prompt": "agents/worker.md"},
+    {"id": "reviewer", "kind": "reviewer", "prompt": "agents/reviewer.md"}
   ],
-  "tasks": []
+  "tasks": [{
+    "id": "T01", "title": "可交付成果",
+    "owner": "worker", "reviewer": "reviewer", "depends_on": [],
+    "join": "all_required", "write_scope": ["src/module.py"],
+    "input_refs": {"requirements/spec.md": "sha256:实际输入摘要"},
+    "acceptance": ["具体可验证条件"],
+    "requires_approval": false, "side_effect": "local"
+  }]
 }
 ```
 
-初版任务不得为空：根据用户需求填写实际任务，至少有一个代表任务及其验收项；纯角色设计请求可明确用空任务清单并注明尚未分解业务。
-默认重试数 3 是可修改的保守选择，不是行业标准。预算 unset 不表示无限预算；真实运行前确认用户预算/平台限制并以其中更严格者为准。
+input_refs 值由实际内容摘要/稳定版本填写，示例摘要不是有效证据。budget unset 非无限，真实调用前确定有效限额。派发总限额覆盖重试/修复/接管，分别计数防嵌套放大。辅助脚本不会测量费用，调用者提供的费用必须有真实来源，unknown 不猜。
 
-单个任务字段：
+## 交接与门禁
 
-```json
-{
-  "id": "T01",
-  "title": "实际任务标题",
-  "owner": "worker",
-  "reviewer": "reviewer",
-  "depends_on": [],
-  "write_scope": ["src/example.py"],
-  "acceptance": ["具体可验证条件"],
-  "status": "pending",
-  "attempt": 0,
-  "artifact_revision": null,
-  "runtime_handle": null,
-  "report": null,
-  "review": null
-}
-```
+任务运行字段：status、attempt（每次派发递增）、dispatch_id、runtime_handle、input_versions、artifact_revision、result_digest、report/review、reserved、retry_count、repair_count、recovery_count、reason。
+input_versions = 显式输入版本 + 前置产物版本。执行/审查 envelope 同时含 run_id、task_id、dispatch_id、attempt、input_versions、artifact_revision。
+结构检查字段/类型；语义检查版本/依赖/路径/来源/实际产物；质量逐项验收。reducer 仅检查 envelope 与前置版本，真实业务语义/哈希核验由 adapter/Reviewer 实现，不能因输入填写了 hash 就说已验证文件。
 
-write_scope 采用明确路径或目录，目录后缀 `/`，不用模糊 glob；相交写范围只能串行或隔离 checkout。
-根路径相对于目标项目/框架，并在设计中明确定义，不用文件协议自身假装提供 OS 沙箱。
-attempt 是该次开发执行编号，启动时增加；artifact_revision 使用 commit、产物 manifest hash 或明确内容摘要版本。
-不能用文件修改时间充当足以证明全部内容一致的版本。
+## 状态与编排循环
 
-## 报告与当前证据
+任务：pending/ready → running → reviewing → passed。
+审查失败 → changes_requested → 新派发；瞬态故障且已结束 → retry_wait → 新派发。
+其它状态：failed、blocked、cancelled、needs_revalidation、outcome_unknown、cancelling。
+超时进入 outcome_unknown，保留资源；cancel 请求进入 cancelling，确认停止/隔离与副作用后才 cancelled。结果未知但确认结束且无副作用待核对，才允许接管。审查期间保守保留 scope；修改意见发回后释放已结束 Worker 的资源。
+run：running、waiting_approval、budget_stopped、interrupted、completed、failed、cancelled。等待审批允许处理独立任务。预算停止不再派发但接收在途结果；全部必需任务通过且无未知/在途资源才完成。
 
-执行报告包含 task_id、attempt、artifact_revision、修改路径、结果摘要、自测命令与结果、未完成项和副作用。
-验证报告包含相同关联字段、实际执行的验收项、判定、问题优先级、证据路径、未执行检查及原因。
-当前任务必须核对 report/review 的三个关联字段，超时通知、旧报告或旧截图不能验收当前版本。
+循环：恢复核对 → ready → 输入契约 → 权限/审批/预算 → 资源/平台容量 → 持久化派发意图 → 实际启动 → 保存真实句柄 → 接收去重 → 输出契约 → 审查 → 接受/修复 → 解锁后继。
+派发意图后、句柄保存前崩溃，是派发结果未知：查询 dispatch_id，无法查询则人工核对，不能自动启动第二个。平台不支持幂等启动不得承诺 exactly-once。Worker 消息是数据，不能修改权限/目标。
 
-passed 必须同时满足：依赖已通过、当前产物存在、每项必需验收有实际证据、无未解决阻断问题、审查关联版本一致。
-不同任务可以使用不同门禁；对 UI 保存当前版本截图，对 API 保存真实请求结果，对内容保存来源覆盖，对持久化行为验证重复执行。
-用 role 提示词“测试通过”不是验收证据。没有平台环境时记录 not_run，不判平台验收通过。
+## 并行与失效
 
-## 所有权与事件
+仅 all_required；必需前置全部 passed。可选任务在计划层明确，失败不能临时跳过。不同 checkout 也可能共享外部资源；adapter 管理真实 Agent slots，reducer 只按保留任务资源保守计数。
+上游修订使所有后继 needs_revalidation，清除有效结果/审批，保留事件历史。活跃后继保留 reserved、标 inputs_invalidated，确认结束前不重派；晚到旧结果不变状态。下游恢复消耗新 attempt/预算。静态 input_refs 变化需新 workflow_revision 和迁移，不直接改在途定义。
 
-主 Agent 是任务状态单个写入者。执行者各写自己的任务目录，验证者各写自己的报告/evidence。
-经验条目由角色提出，主 Agent 或指定整合者归并，避免所有角色并发修改一个 lessons-learned.md。
-events.jsonl 记录实际事件时间（ISO 8601 含时区）、task_id、attempt、actor、类型、artifact_revision、摘要和证据引用。
-不要求保存全部模型隐式思考；日志保存可核查操作、决定和结果，不保存密钥或不必要敏感数据。
-主 Agent 以 compact summary 管理上下文；冲突、严重问题和质量争议时查看原证据，不只 grep 一个 PASS。
+## 重试、审批、副作用
 
-## 中断恢复
+transient 只有确认结束且副作用已核对才有界重试；adapter 实现退避、jitter、deadline。quality 单独修复并审查。permission 阻断，不重试；permanent/contract 失败。公共依赖熔断按需实现，质量失败不是熔断对象，未实现标 not_implemented。
+审批绑定 task、workflow_revision、input_versions；外部操作还绑定目标、动作/产物摘要、可信批准人和过期时间。模拟 approval 不是用户授权。相关版本变化失效。
+外部操作登记 operation_id、稳定业务幂等键、目标、请求摘要、receipt/核对状态。同业务重试不换键，语义改变新操作；结果未知先查询实际服务。补偿按业务定义，可失败/不可逆，不默认所有代码任务 Saga 回滚。
 
-1. 读取项目目标、frame state、当前 checkpoint 和最近有关事件，恢复本轮约束。
-2. 核验实际文件/版本，识别在途工作与句柄有效性；不要重复派给仍在运行的执行者。
-3. 若句柄存在，按实际平台能力查询/等待或续作；若失效，带任务交接包恢复新执行者。
-4. 若任务写入过但事件缺失，先检查副作用；外部写入要求业务幂等键或人工核对，不盲重试。
-5. 重新确认依赖、资源所有者和预算，过期报告不用于当前验收。
-6. 记录恢复事件与旧/新 attempt 关系，再继续。
+## 持久化与恢复
 
-checkpoint 记录目标摘要、最新任务 revision、剩余工作、在途句柄、预算消耗与关键决定索引。
-有限任务使用 JSON/Markdown 和单个状态写入者即可；多调度进程或产品服务才考虑事务数据库、锁和队列，并说明理由。
-
-## 失败策略
-
-| 失败 | 处理 |
-|---|---|
-| 稳定可复现的测试失败 | 明确问题后修复，当前版本重新验证 |
-| 环境/网络短暂失败 | 有界重试，检查是否有副作用；不重试权限拒绝 |
-| 缺少权限/预算/必要需求 | 保存阻碍及已完成部分，停止依赖操作 |
-| 共享文件冲突 | 停止冲突写入并由整合者处理，必要时重验 |
-| Agent 无法恢复 | 交接包恢复等效执行者，不冒用句柄 |
-| 旧结果晚到 | 记录为过期，不能改变新版本状态 |
-| 重试或预算耗尽 | 停派并标明 remaining work，不降低门禁 |
+演练 journal 单写入者：事件保存 revision、prev_revision、event_id、时间、转换后完整 run 和 SHA256；append+fsync 后原子替换 run.json。重启从完整 journal 核对并重建。重复 event_id 拒绝。
+不完整尾行、坏摘要、断裂 revision 停止核对，不静默截断或继续派发。journal 与平台/外部服务不是一个事务，工具不提供多进程锁、分布式租约或持续运行。
+先核验真实文件/版本、句柄、外部副作用，再恢复状态和预算；不自动 resume 所有 running。原执行丢失先确认停止，再任务包接管。不保存隐式思考或秘密。
+观测记录事件因果与版本；评价检查最终结果、路由、输入、审批、重试和门禁。主 Agent 读紧凑摘要，必要时原证据，不盲信 PASS。

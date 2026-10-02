@@ -7,7 +7,7 @@ STATUSES = {"pending", "ready", "running", "reviewing", "passed", "changes_reque
             "failed", "blocked", "paused", "cancelled"}
 
 
-def validate(root):
+def validate_v1(root):
     root = Path(root).resolve()
     errors = []
 
@@ -145,6 +145,18 @@ def validate(root):
             except (OSError, ValueError) as exc:
                 errors.append(f"{tid}/{field}: {exc}")
     return errors
+
+
+def validate(root):
+    root = Path(root).resolve()
+    if not (root / "workflow.json").exists():
+        return validate_v1(root)
+    # Load sibling without relying on the importing caller's sys.path.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("v2_validation", Path(__file__).with_name("validate_v2.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.validate(root)
 
 
 def main():

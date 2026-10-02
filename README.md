@@ -8,7 +8,7 @@ GUiGUI 的个人 skill 沉淀仓库。把实际任务中验证过的流程、判
 |---|---|---|
 | [course-lecture-notes](skills/course-lecture-notes/SKILL.md) | 将字幕、视频、PPT 与官方代码转为详细中文课程讲义，支持七件套、批量制作和验收 | active · v1.0.0 |
 | [course-teaching-notebooks](skills/course-teaching-notebooks/SKILL.md) | 将已有讲义转为可运行教学 Notebook，提供结果观察、参数实验、练习答案及 HTML 阅读版 | active · v1.0.0 |
-| [multi-agent-framework-builder](skills/multi-agent-framework-builder/SKILL.md) | 根据项目需求生成角色、任务依赖、写入边界、验收协议和长时恢复的多 Agent 框架 | active · v1.0.0 |
+| [multi-agent-framework-builder](skills/multi-agent-framework-builder/SKILL.md) | 先绘图，再生成中央 Orchestration、版本化交接、独立验收和恢复协议的项目框架 | active · v2.0.0 |
 
 完整元数据见 [catalog.json](catalog.json)。新增和修改 skill 先阅读 [沉淀规范](docs/SKILL_STANDARD.md)；Agent 还必须遵循 [AGENTS.md](AGENTS.md)。
 
@@ -36,7 +36,17 @@ python -m pip install -r requirements-dev.txt
 python scripts/validate_skills.py
 ```
 
-提交前运行检查，并记录实际测试。当前使用本地结构检查；GitHub Actions 配置已在本地准备，待 GitHub 授权具备 `workflow` 权限后上传启用。结构检查不替代真实任务验收。
+提交前运行检查，并记录实际测试。本仓库采用本地检查，不使用 GitHub Actions。结构检查不替代真实任务验收。
+
+多 Agent 框架 v2 示例：
+
+```text
+使用 $multi-agent-framework-builder，根据项目需求先绘架构与执行流程图，
+生成中央 Orchestration 工作包，明确角色、输入版本、写入边界、审查、整合与恢复。
+先完成本地模拟验证，不启动真实业务开发；运行平台与项目需求：……
+```
+
+v1 工作包不自动升级，按 [迁移说明](skills/multi-agent-framework-builder/references/migration.md) 另存并重新核验。
 
 仓库保存技能定义和少量必要资源。课程视频、批量讲义、临时截图、缓存、账号资料和密钥不进入本仓库。
 
